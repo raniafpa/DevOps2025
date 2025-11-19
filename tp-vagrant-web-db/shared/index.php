@@ -7,4 +7,5 @@ if ($conn->connect_error) {
 
 echo "✅ Connexion DB réussie !<br>";
 echo "Base de données : tp_db<br>";
+echo "<br><a href='phpmyadmin'>➡️ Accéder à phpMyAdmin</a>";
 ?>
