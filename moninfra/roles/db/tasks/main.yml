@@ -1,0 +1,66 @@
+---
+- name: Mettre à jour le cache APT
+  apt:
+    update_cache: yes
+
+- name: Installer MariaDB server et client
+  apt:
+    name:
+      - mariadb-server
+      - mariadb-client
+      - python3-pip
+    state: present
+
+- name: Installer le module Python PyMySQL via APT
+  apt:
+    name: python3-pymysql
+    state: present
+  notify: Restart MariaDB
+
+- name: S'assurer que MariaDB est démarré et activé
+  service:
+    name: mariadb
+    state: started
+    enabled: yes
+
+# -----------------------------------------
+# Correction du compte root pour Ansible
+# -----------------------------------------
+- name: Fix root user to use unix_socket
+  mysql_user:
+    name: root
+    host: localhost
+    plugin: unix_socket
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Remove any root password to enable socket login
+  mysql_user:
+    name: root
+    host: localhost
+    password: ""
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Restart MariaDB after fixing root account
+  service:
+    name: mariadb
+    state: restarted
+
+- import_tasks: bdplususer.yml
+ 
+# Autoriser MariaDB à écouter sur toutes les interfaces
+- name: Autoriser MariaDB à écouter sur toutes les interfaces
+  lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: '^bind-address'
+    line: 'bind-address = 0.0.0.0'
+    backup: yes
+  notify: Restart MariaDB
+
+# S'assurer que MariaDB est démarré
+- name: S'assurer que MariaDB est démarré
+  service:
+    name: mariadb
+    state: started
+    enabled: yes

@@ -1,0 +1,19 @@
+---
+ - name: Déployer le serveur web
+   hosts: webservers
+   become: yes
+   vars:
+     site_root: /var/www/site
+     default_site_root: /var/www/html
+     git_repo: 'https://github.com/raniafpa/Files.git'
+   roles:
+    - web
+    - php
+    - ufw_web
+
+ - name: Déployer le serveur de base de données
+   hosts: dbservers
+   become: yes
+   roles:
+    - db
+    - ufw_db

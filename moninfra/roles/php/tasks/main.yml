@@ -1,0 +1,27 @@
+---
+- name: Installer PHP et modules requis pour Apache et MySQL
+  apt:
+    name:
+      - php
+      - libapache2-mod-php
+      - php-mysql
+      - php-cli
+      - php-curl
+      - php-xml
+      - php-mbstring
+      - mariadb-client
+    state: present
+    update_cache: yes
+
+- name: Redémarrer Apache2 pour prendre en compte PHP
+  service:
+    name: apache2
+    state: restarted
+
+- name: Copier le fichier PHP de test vers /var/www/site
+  template:
+    src: index.php.j2
+    dest: /var/www/site/index.php
+    owner: www-data
+    group: www-data
+    mode: '0644'

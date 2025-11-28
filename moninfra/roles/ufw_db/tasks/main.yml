@@ -1,0 +1,32 @@
+---
+- name: Installer UFW
+  apt:
+    name: ufw
+    state: present
+    update_cache: yes
+
+- name: Politique par défaut — refuser tout le trafic entrant
+  ufw:
+    default: deny
+    direction: incoming
+
+- name: Politique par défaut — autoriser le trafic sortant
+  ufw:
+    default: allow
+    direction: outgoing
+
+- name: Autoriser SSH
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: Autoriser MariaDB uniquement depuis le serveur web
+  ufw:
+    rule: allow
+    from_ip: 192.168.56.111
+    port: "3306"
+    proto: tcp
+
+- name: Activer UFW
+  command: ufw --force enable

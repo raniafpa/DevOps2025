@@ -1,0 +1,131 @@
+---
+
+    - name: Mettre à jour le cache APT
+      apt:
+        update_cache: yes
+
+    - name: Installer Git
+      apt:
+        name: git
+        state: present
+
+    - name: Installer Apache2 (sans démarrer le service)
+      apt:
+        name: apache2
+        state: present
+   
+    - name: Démarrer Apache2
+      service:
+        name: apache2
+        state: started
+ 
+    - name: Vérifier l'existence du dossier
+      stat:
+        path: /var/www/html
+      register: html_dir
+
+    - name: Afficher l'état du dossier
+      debug:
+        msg: "/var/www/html existe"
+      when: html_dir.stat.exists
+
+    - name: Supprimer le fichier index.html
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - block:
+        - name: appliquer des droits sur le dossier /var/www/html
+          file:
+            path: /var/www/html
+            owner: vagrant
+            group: vagrant
+            mode: '0755'
+
+        - name: Cloner le dépôt Git dans /var/www/html
+          git:
+            repo: 'https://github.com/raniafpa/Files.git'
+            dest: /var/www/html
+            version: main
+            force: yes
+            update: yes
+
+        - name: Appliquer les bons droits
+          file:
+            path: /var/www/html
+            owner: www-data
+            group: www-data
+            mode: '0755'
+            recurse: yes
+
+        - name: Vérifier la page d'accueil HTTP
+          uri:
+            url: http://localhost
+            return_content: yes
+            status_code: 200
+          register: apache_http
+
+        - name: Afficher le résultat du test HTTP
+          debug:
+            msg: >
+             Apache est {{ 'OK' if apache_http.status == 200 else 'NON OK' }}
+      tags:
+        - git_block
+
+     
+    - name: Vérifier le statut du service Apache2
+      systemd:
+        name: apache2
+        state: started   # check_mode pour ne pas modifier
+      check_mode: yes
+      register: apache_status
+
+    - name: Afficher l'état du service
+      debug:
+        msg: >
+          Apache2 est {{ 'actif (running)' if apache_status.status.ActiveState == 'active' else 'inactif' }}
+
+    - name: Créer le répertoire /var/www/site
+      file:
+        path: /var/www/site
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Déplacer index.html vers /var/www/site
+      command: mv /var/www/html/index.html /var/www/site/
+      args:
+        removes: /var/www/html/index.html
+
+    - name: Créer le VirtualHost via template
+      template:
+        src:  site.conf.j2
+        dest: /etc/apache2/sites-available/site.conf
+      notify: Reload Apache2
+
+    - name: Activer le site
+      command: a2ensite site.conf
+      args:
+        creates: /etc/apache2/sites-enabled/site.conf
+      notify: Reload Apache2
+
+    - name: Désactiver le VirtualHost par défaut
+      command: a2dissite 000-default.conf
+      args:
+        removes: /etc/apache2/sites-enabled/000-default.conf
+      notify: Reload Apache2
+
+    # ---------------------------
+    # Assurer qu'Apache est actif et activé au boot
+    # ---------------------------
+    - name: Assurer qu'Apache est démarré et activé au boot
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+  
+
+
+
